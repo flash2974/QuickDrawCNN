@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Zone de dessin</title>
+        <style>
+            :root {
+                --bg: #f6f7fb;
+                --card: #ffffff;
+                --accent: #4f46e5;
+                --muted: #6b7280;
+                --success: #10b981;
+            }
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                    "Segoe UI", Roboto, "Helvetica Neue", Arial;
+                background: linear-gradient(180deg, var(--bg), #eef2ff);
+                color: #111827;
+            }
+            .page {
+                min-height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 32px;
+            }
+            .card {
+                background: var(--card);
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+                padding: 24px;
+                max-width: 520px;
+                width: 100%;
+            }
+            h2 {
+                margin: 0 0 12px 0;
+                font-size: 20px;
+                color: #0f172a;
+            }
+            .canvas-wrap {
+                display: flex;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            canvas {
+                border-radius: 8px;
+                background: white;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                cursor: crosshair;
+                border: 1px solid rgba(2, 6, 23, 0.06);
+                width: 400px;
+                height: 400px;
+            }
+            .controls {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            #reset {
+                background: transparent;
+                border: 1px solid rgba(15, 23, 42, 0.06);
+                padding: 8px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                color: var(--accent);
+            }
+            #reset:hover {
+                background: rgba(79, 70, 229, 0.06);
+            }
+            #label {
+                min-height: 36px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 600;
+                color: var(--muted);
+            }
+            .badge {
+                background: linear-gradient(90deg, #eef2ff, #e9f5ff);
+                padding: 6px 10px;
+                border-radius: 999px;
+                color: var(--accent);
+                font-weight: 700;
+                box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.02);
+            }
+            .prec {
+                font-size: 12px;
+                color: var(--muted);
+                margin-left: 8px;
+            }
+            /* Predictions list */
+            .prediction-list {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-top: 8px;
+            }
+            .prediction-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px;
+                border-radius: 10px;
+                background: linear-gradient(180deg, #fff, #fbfdff);
+                box-shadow: 0 4px 12px rgba(2, 6, 23, 0.04);
+                border: 1px solid rgba(15, 23, 42, 0.04);
+            }
+            .prediction-left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .model-name {
+                font-size: 13px;
+                color: var(--muted);
+                font-weight: 700;
+                padding: 6px 8px;
+                border-radius: 8px;
+                background: rgba(79, 70, 229, 0.06);
+                color: var(--accent);
+            }
+            .pred-label {
+                font-weight: 700;
+                font-size: 15px;
+                color: #0f172a;
+            }
+            .prec {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .bar {
+                width: 120px;
+                height: 8px;
+                background: #eef2ff;
+                border-radius: 999px;
+                overflow: hidden;
+                margin-left: 12px;
+            }
+            .bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--accent), #06b6d4);
+                width: 0%;
+            }
+            /* preview image next to canvas */
+            #preview {
+                width: 400px;
+                height: 400px;
+                image-rendering: pixelated;
+                border-radius: 8px;
+                border: 1px solid rgba(2, 6, 23, 0.06);
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                background: white;
+            }
+            @media (max-width: 640px) {
+                .canvas-wrap {
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .card {
+                    padding: 16px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Zone de dessin</h2>
+        <div class="canvas-wrap">
+            <canvas id="dessin" width="400" height="400"></canvas>
+            <img id="preview" alt="Prétraitée" style="display: none" />
+        </div>
+        <button id="reset">Reset</button>
+
+        <script>
+            const canvas = document.getElementById("dessin");
+            const ctx = canvas.getContext("2d");
+            // Fond blanc
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Couleur du tracé
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 10;
+            const resetBtn = document.getElementById("reset");
+
+            let interval = null;
+            let drawingStarted = false;
+            let dessin = false;
+            let sending = false; // prevent concurrent sends
+            let inactivityTimer = null; // stops sending after inactivity
+
+            function startSending() {
+                if (!drawingStarted) {
+                    drawingStarted = true;
+                    interval = setInterval(sendImage, 5000);
+                }
+                // reset inactivity timer whenever we start
+                scheduleInactivityStop();
+            }
+
+            function stopSending() {
+                if (interval) {
+                    clearInterval(interval);
+                    interval = null;
+                }
+                drawingStarted = false;
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = null;
+                }
+            }
+
+            function scheduleInactivityStop() {
+                // stop sending if no drawing activity for 10s
+                if (inactivityTimer) clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    stopSending();
+                    console.log("Stopped sending: no drawing activity for 10s");
+                }, 10000);
+            }
+
+            // Use pointer events (works for mouse + touch)
+            canvas.addEventListener("pointerdown", (e) => {
+                // begin stroke
+                dessin = true;
+                ctx.beginPath();
+                // compute coordinates relative to canvas
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                ctx.moveTo(x, y);
+                // start periodic sending when drawing starts
+                startSending();
+            });
+
+            canvas.addEventListener("pointermove", (e) => {
+                if (!dessin) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                // activity detected -> reset inactivity timer so sending continues
+                scheduleInactivityStop();
+            });
+
+            // listen on window so we catch pointerup even if released outside canvas
+            window.addEventListener("pointerup", (e) => {
+                if (dessin) {
+                    dessin = false;
+                    // schedule stop after inactivity (if no more drawing within 10s)
+                    scheduleInactivityStop();
+                }
+            });
+
+            // also handle pointercancel (e.g., touch interruptions)
+            canvas.addEventListener("pointercancel", () => {
+                dessin = false;
+                scheduleInactivityStop();
+            });
+
+            resetBtn.addEventListener("click", () => {
+                // stop sending & timers
+                stopSending();
+                dessin = false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Remettre le fond blanc
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
+
+            function sendImage() {
+                if (sending) return;
+                sending = true;
+                // Do not create a local preview here — wait for server preprocessed image
+
+                canvas.toBlob(
+                    (blob) => {
+                        const formData = new FormData();
+                        formData.append("screenshot", blob, "capture.jpg");
+
+                        fetch("/upload", {
+                            method: "POST",
+                            body: formData,
+                        })
+                            .then((rep) => rep.json())
+                            .then((json) => {
+                                console.log("upload response", json);
+                                const labelDiv =
+                                    document.getElementById("label");
+                                labelDiv.innerHTML = "";
+
+                                // show server preprocessed image
+                                const prev = document.getElementById("preview");
+                                if (prev && json.image) {
+                                    prev.src = json.image;
+                                    prev.style.display = "block";
+                                }
+
+                                const list = document.createElement("div");
+                                list.className = "prediction-list";
+                                (json.predictions || []).forEach((model) => {
+                                    const item = document.createElement("div");
+                                    item.className = "prediction-item";
+
+                                    const left = document.createElement("div");
+                                    left.className = "prediction-left";
+
+                                    const modelName =
+                                        document.createElement("div");
+                                    modelName.className = "model-name";
+                                    modelName.textContent = model.model;
+
+                                    const label = document.createElement("div");
+                                    label.className = "pred-label";
+                                    label.textContent = model.label;
+
+                                    left.appendChild(modelName);
+                                    left.appendChild(label);
+
+                                    const right = document.createElement("div");
+                                    right.style.display = "flex";
+                                    right.style.alignItems = "center";
+
+                                    const precSpan =
+                                        document.createElement("div");
+                                    precSpan.className = "prec";
+                                    // try to format precision nicely
+                                    let p = parseFloat(model.prec);
+                                    if (isNaN(p)) p = 0;
+                                    const pct = Math.round(p * 100) / 100;
+                                    precSpan.textContent = `${pct}%`;
+
+                                    const bar = document.createElement("div");
+                                    bar.className = "bar";
+                                    const fill = document.createElement("div");
+                                    fill.className = "bar-fill";
+                                    // if prec given as 0-1 or 0-100, normalize
+                                    let widthPct = p;
+                                    if (p > 1) widthPct = Math.min(100, p);
+                                    else
+                                        widthPct = Math.min(
+                                            100,
+                                            Math.max(0, p * 100)
+                                        );
+                                    fill.style.width = widthPct + "%";
+                                    bar.appendChild(fill);
+
+                                    right.appendChild(precSpan);
+                                    right.appendChild(bar);
+
+                                    item.appendChild(left);
+                                    item.appendChild(right);
+                                    list.appendChild(item);
+                                });
+                                labelDiv.appendChild(list);
+                            })
+                            .catch((e) => console.error(e))
+                            .finally(() => {
+                                sending = false;
+                            });
+                    },
+                    "image/jpeg",
+                    1
+                );
+            }
+        </script>
+        <div id="label"></div>
+    </body>
+</html>

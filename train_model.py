@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 from keras.models import Sequential
@@ -45,6 +46,7 @@ def train_save_models() :
     np.random.shuffle(indexes)
     X_train = X_train[indexes]
     y_train = y_train[indexes]
+    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2)
     X_train = X_train.reshape(-1, 28, 28, 1)
 
     # Model
@@ -57,7 +59,7 @@ def train_save_models() :
             metrics = ["accuracy"] # Connaître la performance du modèle, cb de prédictions correctes
         )
 
-        model.fit(X_train, y_train, epochs=10) # on explore 10 fois le dataset
+        model.fit(X_train, y_train, epochs=10, validation_data = (X_test, y_test)) # on explore 10 fois le dataset
         model.save(f'models/{model.name}.keras')
     
     

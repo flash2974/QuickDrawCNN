@@ -9,8 +9,8 @@ from keras.models import load_model
 MODEL_PATH = 'models'
 if not os.path.exists(MODEL_PATH) :
     os.makedirs(MODEL_PATH)
-    train_save_models()
-
+    
+train_save_models()
 models = []
 for model_name in os.listdir(MODEL_PATH):
     model = load_model(os.path.join(MODEL_PATH, model_name))

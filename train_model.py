@@ -52,17 +52,17 @@ def train_save_models() :
     # Model
     num_classes = len(draw_class)
     for model in model_bench(num_classes) : 
-        print(f'Training {model.name}')
-        model.compile(
-            loss = "sparse_categorical_crossentropy", # sparse : label = int au lieu de hot encoding (3 au lieu de 0000000011 )
-            optimizer = "adam",
-            metrics = ["accuracy"] # Connaître la performance du modèle, cb de prédictions correctes
-        )
+        if not os.path.exists(f"models/{model}.keras") :
+            print(f'Training {model.name}')
+            model.compile(
+                loss = "sparse_categorical_crossentropy", # sparse : label = int au lieu de hot encoding (3 au lieu de 0000000011 )
+                optimizer = "adam",
+                metrics = ["accuracy"] # Connaître la performance du modèle, cb de prédictions correctes
+            )
 
-        model.fit(X_train, y_train, epochs=10, validation_data = (X_test, y_test)) # on explore 10 fois le dataset
-        model.save(f'models/{model.name}.keras')
-    
-    
+            model.fit(X_train, y_train, epochs=10, validation_data = (X_test, y_test)) # on explore 10 fois le dataset
+            model.save(f'models/{model.name}.keras')
+
     
 def model_bench(num_classes = 10, input_shape=(28,28,1)) :
     BasicCNN = Sequential(name = 'BasicCNN', layers = [
@@ -102,4 +102,11 @@ def model_bench(num_classes = 10, input_shape=(28,28,1)) :
         Dense(num_classes, activation = 'softmax')
     ])
     
-    return [BasicCNN, MaxPooling, AVGPooling_Dropout]
+    BasicMLP = Sequential(name = 'BasicMLP', layers = [
+        Flatten(input_shape=(28, 28, 1)),
+        Dense(256, activation='relu'),
+        Dense(128, activation='relu'),
+        Dense(10, activation='softmax'),
+    ])
+    
+    return [BasicMLP, BasicCNN, MaxPooling, AVGPooling_Dropout]

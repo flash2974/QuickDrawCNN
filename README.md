@@ -1,36 +1,34 @@
-# Modèles de reconnaissance d'images Quickdraw
+# QuickDraw Image Recognition Models
 
-4 modèles différents : 
-- BasicMLP : MLP (multi layer perceptron) très très simple 
-- BasicCNN : CNN séquentiel avec 3 couches Conv2D superposées
-- MaxPooling : BasicCNN + MaxPooling2D entre les couches de convolutions
-- AVGPooling_Dropout : MaxPooling + GlobalAveragePooling2D et Dense
-  
+4 different models:
 
-J'ai entrainé ces modèles sur une fusion de 10 datasets tirés de Google Quickdraw, à savoir :
-- chien
-- avion
-- livre
-- Tour Effiel
-- voiture
-- visage (smiley)
-- chaise
-- pomme
-- cerveau
-- oeil
+- BasicMLP: a very simple MLP (multi-layer perceptron)
+- BasicCNN: a sequential CNN with 3 stacked Conv2D layers
+- MaxPooling: BasicCNN + MaxPooling2D between convolution layers
+- AVGPooling_Dropout: MaxPooling + GlobalAveragePooling2D and Dense layers
 
-C'est un dataset de 28x28x1 (mono-canal, en nuances de gris) donc forcément pas très performant sur des "vrais" dessins. Je rescale le dessin côté serveur puis je passe l'image rescaled aux 3 modèles du benchmark.
+I trained these models on a merge of 10 datasets from [Google QuickDraw](https://console.cloud.google.com/storage/browser/quickdraw_dataset/full/numpy_bitmap), namely:
 
-On dessine et ensuite les 4 prédictions sont effectuées en temps réel, et on a les prédictions avec les accuracy associées.
+- dog
+- airplane
+- book
+- Eiffel Tower
+- car
+- face (smiley)
+- chair
+- apple
+- brain
+- eye
 
+This is a 28x28x1 dataset (single-channel, grayscale), so it is not very good on "real" drawings. I resize the drawing on the server side, then I pass the resized image to the 3 benchmark models.
 
-Pour tester : Aller sous linux (WSL ou sur windowws), et installer (avec pip): 
+You draw, then the 4 predictions are made in real time, and you get the predictions with their associated accuracies.
 
+If you want to run this project, you have to download some `.npy` files from [Google QuickDraw Dataset](https://console.cloud.google.com/storage/browser/quickdraw_dataset/full/numpy_bitmap), put those files in the `quickdraw_dataset` folder. Then, install the requirements and run : 
+
+```bash
+uv sync
+uv run main.py
 ```
-tensorflow[and-cuda]
-scikit-learn
-```
-
-Puis lancer le projet sous WSL. Il vous faut aussi un dossier `quickdraw_dataset` avec dedans des datasets au format `.npy`, sur lesquels les modèles seront entrainés.
 
 ![alt text](img/image.png)

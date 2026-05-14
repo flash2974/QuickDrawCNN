@@ -1,3 +1,6 @@
 __pycache__
-*.npy
+quickdraw_dataset/*.npy
 models
+
+.vscode
+.ruff_cache

@@ -1,4 +1,4 @@
-# QuickDraw Image Recognition Models
+# QuickDraw images recognition models
 
 4 different models:
 

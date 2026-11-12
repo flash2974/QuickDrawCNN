@@ -62,7 +62,7 @@ def model_list(num_classes=10, input_shape=(28, 28, 1)):
                 Flatten(input_shape=(28, 28, 1)),
                 Dense(256, activation="relu"),
                 Dense(128, activation="relu"),
-                Dense(10, activation="softmax"),
+                Dense(num_classes, activation="softmax"),
             ],
         ),
     ]

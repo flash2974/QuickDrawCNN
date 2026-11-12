@@ -1,4 +1,3 @@
-import os
 from keras.models import load_model
 import numpy as np
 from .utils import preprocess_image, train_save_models
@@ -9,8 +8,8 @@ MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 classes = train_save_models()
 models = []
-for model_name in os.listdir(MODELS_DIR):
-    model = load_model(MODELS_DIR / model_name)
+for model_path in sorted(MODELS_DIR.glob("*.keras")):
+    model = load_model(model_path)
     models.append(model)
 
 

@@ -1,3 +1,4 @@
+import json
 from PIL import Image
 from matplotlib import pyplot as plt
 import numpy as np
@@ -10,10 +11,21 @@ from .models import model_list
 
 
 def train_save_models(max_size=10_000):
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    classes_path = MODELS_DIR / "classes.json"
+
+    if classes_path.exists():
+        saved_classes = json.loads(classes_path.read_text(encoding="utf-8"))
+        expected_models = model_list(len(saved_classes))
+        if all((MODELS_DIR / f"{m.name}.keras").exists() for m in expected_models):
+            return saved_classes
+
     # Load dataset
     assert DATASET_DIR.exists(), "Pas de dataset pour train"
 
-    files = [name for name in os.listdir(DATASET_DIR) if ".npy" in name]
+    files = sorted(name for name in os.listdir(DATASET_DIR) if name.endswith(".npy"))
+    assert files, "Aucun fichier .npy trouvé dans le dataset"
+
     draw_class = []
     X_train = np.zeros((max_size, 28, 28))
     y_train = np.zeros((max_size,))
@@ -23,11 +35,10 @@ def train_save_models(max_size=10_000):
     it = 0
     t = 0
     for name in tqdm(files, desc="Loading dataset"):
-        # Open each dataset and add the new class
         draw_class.append(name.replace("full_numpy_bitmap_", "").replace(".npy", ""))
-        draws = np.load(DATASET_DIR / name)
-        draws = draws[:max_size_per_cl]  # Take only 10 000 draw
-        # Add X_train to the buffer
+        draws = np.load(DATASET_DIR / name, mmap_mode="r")
+        draws = draws[:max_size_per_cl]
+
         X_train[it : it + draws.shape[0]] = np.invert(draws.reshape(-1, 28, 28))
         y_train[it : it + draws.shape[0]] = t
         # Iter
@@ -36,11 +47,10 @@ def train_save_models(max_size=10_000):
 
     X_train = X_train.astype(np.float32)
 
-    # Keep only filled entries (avoid zeros from preallocated buffer)
     X_train = X_train[:it]
     y_train = y_train[:it]
 
-    # Shuffle dataset (only the real entries)
+    # on mélange le dataset
     indexes = np.arange(it)
     np.random.shuffle(indexes)
     X_train = X_train[indexes]
@@ -48,7 +58,7 @@ def train_save_models(max_size=10_000):
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2)
     X_train = X_train.reshape(-1, 28, 28, 1)
 
-    # Model
+    # models
     num_classes = len(draw_class)
     for model in model_list(num_classes):
         model_path = MODELS_DIR / f"{model.name}.keras"
@@ -66,6 +76,8 @@ def train_save_models(max_size=10_000):
                 X_train, y_train, epochs=10, validation_data=(X_test, y_test)
             )  # on explore 10 fois le dataset
             model.save(model_path)
+
+    classes_path.write_text(json.dumps(draw_class, indent=2), encoding="utf-8")
     return draw_class
 
 

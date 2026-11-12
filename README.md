@@ -24,11 +24,13 @@ This is a 28x28x1 dataset (single-channel, grayscale), so it is not very good on
 
 You draw, then the 4 predictions are made in real time, and you get the predictions with their associated accuracies.
 
-If you want to run this project, you have to download some `.npy` files from [Google QuickDraw Dataset](https://console.cloud.google.com/storage/browser/quickdraw_dataset/full/numpy_bitmap), put those files in the `quickdraw_dataset` folder. Then, install the requirements and run : 
+If you want to run this project, you have to download some `.npy` files from [Google QuickDraw Dataset](https://console.cloud.google.com/storage/browser/quickdraw_dataset/full/numpy_bitmap), put those files in the `quickdraw_dataset` folder. Then, install the requirements and run :
 
 ```bash
 uv sync
 uv run main.py
 ```
 
-![alt text](img/image.png)
+## Demo
+
+![Demo](img/demo.gif)
